@@ -57,10 +57,11 @@ import (
 type FilerOption struct {
 	Masters               *pb.ServerDiscovery
 	FilerGroup            string
-	Collection            string
-	DefaultReplication    string
-	DisableDirListing     bool
-	MaxMB                 int
+	Collection                string
+	DefaultReplication        string
+	DisableDirListing         bool
+	DisableDirListingReadonly bool
+	MaxMB                     int
 	DirListingLimit       int
 	DataCenter            string
 	Rack                  string

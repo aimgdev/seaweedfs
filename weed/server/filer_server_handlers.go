@@ -16,6 +16,7 @@ import (
 	"github.com/seaweedfs/seaweedfs/weed/pb/filer_pb"
 	"github.com/seaweedfs/seaweedfs/weed/security"
 	"github.com/seaweedfs/seaweedfs/weed/stats"
+	"github.com/seaweedfs/seaweedfs/weed/util"
 )
 
 func (fs *FilerServer) filerHandler(w http.ResponseWriter, r *http.Request) {
@@ -171,6 +172,24 @@ func (fs *FilerServer) readonlyFilerHandler(w http.ResponseWriter, r *http.Reque
 
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
+		// Check if directory listing is disabled on readonly port
+		if fs.option.DisableDirListingReadonly {
+			path := r.URL.Path
+			// Check if this is a directory request (ends with / or is root)
+			if strings.HasSuffix(path, "/") {
+				writeJsonError(w, r, http.StatusForbidden, errors.New("directory listing is disabled on readonly port"))
+				return
+			}
+			// Also check if the entry exists and is a directory
+			ctx := r.Context()
+			if path != "/" {
+				entry, err := fs.filer.FindEntry(ctx, util.FullPath(path))
+				if err == nil && entry != nil && entry.IsDirectory() {
+					writeJsonError(w, r, http.StatusForbidden, errors.New("directory listing is disabled on readonly port"))
+					return
+				}
+			}
+		}
 		fs.GetOrHeadHandler(w, r)
 	default:
 		requestMethod = "INVALID"
