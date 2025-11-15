@@ -349,7 +349,7 @@ func ReadUrlAsStream(ctx context.Context, fileUrl, jwt string, cipherKey []byte,
 	var (
 		m int
 	)
-	buf := mem.Allocate(64 * 1024)
+	buf := mem.Allocate(512 * 1024)
 	defer mem.Free(buf)
 
 	for {

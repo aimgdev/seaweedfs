@@ -38,7 +38,7 @@ import (
 var serverStats *stats.ServerStats
 var startTime = time.Now()
 var writePool = sync.Pool{New: func() interface{} {
-	return bufio.NewWriterSize(nil, 128*1024)
+	return bufio.NewWriterSize(nil, 512*1024)
 },
 }
 
