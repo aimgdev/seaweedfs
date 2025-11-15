@@ -12,7 +12,7 @@ var (
 	VERSION_NUMBER = fmt.Sprintf("%d.%02d", MAJOR_VERSION, MINOR_VERSION)
 	VERSION        = util.SizeLimit + " " + VERSION_NUMBER
 	COMMIT         = ""
-	CUSTOM_BUILD   = "jet"
+	CUSTOM_BUILD   = "jet r2"
 )
 
 func Version() string {
