@@ -177,7 +177,7 @@ func (fs *FilerServer) readonlyFilerHandler(w http.ResponseWriter, r *http.Reque
 			path := r.URL.Path
 			// Check if this is a directory request (ends with / or is root)
 			if strings.HasSuffix(path, "/") {
-				writeJsonError(w, r, http.StatusForbidden, errors.New("directory listing is disabled on readonly port"))
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			// Also check if the entry exists and is a directory
@@ -185,7 +185,7 @@ func (fs *FilerServer) readonlyFilerHandler(w http.ResponseWriter, r *http.Reque
 			if path != "/" {
 				entry, err := fs.filer.FindEntry(ctx, util.FullPath(path))
 				if err == nil && entry != nil && entry.IsDirectory() {
-					writeJsonError(w, r, http.StatusForbidden, errors.New("directory listing is disabled on readonly port"))
+					w.WriteHeader(http.StatusNotFound)
 					return
 				}
 			}
