@@ -52,8 +52,6 @@ type FilerOptions struct {
 	filerGroup              *string
 	collection              *string
 	defaultReplicaPlacement *string
-	disableDirListing       *bool
-	disableDirListingReadonly *bool
 	maxMB                   *int
 	dirListingLimit         *int
 	dataCenter              *string
@@ -88,8 +86,6 @@ func init() {
 	f.portGrpc = cmdFiler.Flag.Int("port.grpc", 0, "filer server grpc listen port")
 	f.publicPort = cmdFiler.Flag.Int("port.readonly", 0, "readonly port opened to public")
 	f.defaultReplicaPlacement = cmdFiler.Flag.String("defaultReplicaPlacement", "", "default replication type. If not specified, use master setting.")
-	f.disableDirListing = cmdFiler.Flag.Bool("disableDirListing", false, "turn off directory listing")
-	f.disableDirListingReadonly = cmdFiler.Flag.Bool("disableDirListingReadonly", false, "turn off directory listing on readonly port")
 	f.maxMB = cmdFiler.Flag.Int("maxMB", 4, "split files larger than the limit")
 	f.dirListingLimit = cmdFiler.Flag.Int("dirListLimit", 100000, "limit sub dir listing size")
 	f.dataCenter = cmdFiler.Flag.String("dataCenter", "", "prefer to read and write to volumes in this data center")
@@ -311,27 +307,81 @@ func (fo *FilerOptions) startFiler() {
 
 	filerAddress := pb.NewServerAddress(*fo.ip, *fo.port, *fo.portGrpc)
 
+	// Load readonly path rules from configuration
+	v := viper.GetViper()
+
+	// Load defaults
+	defaultAllowFiles := v.GetBool("filer.readonly.default_allow_files")
+	defaultAllowListing := v.GetBool("filer.readonly.default_allow_listing")
+
+	// If not set in config, use sensible defaults
+	if !v.IsSet("filer.readonly.default_allow_files") {
+		defaultAllowFiles = true // Allow files by default
+	}
+	if !v.IsSet("filer.readonly.default_allow_listing") {
+		defaultAllowListing = false // Block listing by default
+	}
+
+	pathRules := []*weed_server.ReadonlyPathRule{}
+	pathsConfig := v.GetStringMap("filer.readonly.paths")
+
+	glog.V(0).Infof("Loaded %d path rules from filer.readonly.paths", len(pathsConfig))
+
+	for pathPrefix, settingsInterface := range pathsConfig {
+		glog.V(0).Infof("Processing path rule: %s", pathPrefix)
+		if settingsMap, ok := settingsInterface.(map[string]interface{}); ok {
+			allowFiles := true
+			allowListing := false
+
+			if val, exists := settingsMap["allow_files"]; exists {
+				if boolVal, ok := val.(bool); ok {
+					allowFiles = boolVal
+				}
+			}
+
+			if val, exists := settingsMap["allow_listing"]; exists {
+				if boolVal, ok := val.(bool); ok {
+					allowListing = boolVal
+				}
+			}
+
+			rule := &weed_server.ReadonlyPathRule{
+				PathPrefix:   pathPrefix,
+				AllowFiles:   allowFiles,
+				AllowListing: allowListing,
+			}
+			pathRules = append(pathRules, rule)
+			glog.V(0).Infof("Added readonly rule: path=%s, allow_files=%v, allow_listing=%v", pathPrefix, allowFiles, allowListing)
+		}
+	}
+
+	// Sort by prefix length (longest first) for correct matching
+	sort.Slice(pathRules, func(i, j int) bool {
+		return len(pathRules[i].PathPrefix) > len(pathRules[j].PathPrefix)
+	})
+
 	fs, nfs_err := weed_server.NewFilerServer(defaultMux, publicVolumeMux, &weed_server.FilerOption{
-		Masters:                   fo.masters,
-		FilerGroup:                *fo.filerGroup,
-		Collection:                *fo.collection,
-		DefaultReplication:        *fo.defaultReplicaPlacement,
-		DisableDirListing:         *fo.disableDirListing,
-		DisableDirListingReadonly: *fo.disableDirListingReadonly,
-		MaxMB:                     *fo.maxMB,
-		DirListingLimit:           *fo.dirListingLimit,
-		DataCenter:                *fo.dataCenter,
-		Rack:                      *fo.rack,
-		DefaultLevelDbDir:         defaultLevelDbDirectory,
-		DisableHttp:               *fo.disableHttp,
-		Host:                      filerAddress,
-		Cipher:                    *fo.cipher,
-		SaveToFilerLimit:          int64(*fo.saveToFilerLimit),
-		ConcurrentUploadLimit:     int64(*fo.concurrentUploadLimitMB) * 1024 * 1024,
-		ShowUIDirectoryDelete:     *fo.showUIDirectoryDelete,
-		DownloadMaxBytesPs:        int64(*fo.downloadMaxMBps) * 1024 * 1024,
-		DiskType:                  *fo.diskType,
-		AllowedOrigins:            strings.Split(*fo.allowedOrigins, ","),
+		Masters:               fo.masters,
+		FilerGroup:            *fo.filerGroup,
+		Collection:            *fo.collection,
+		DefaultReplication:    *fo.defaultReplicaPlacement,
+		MaxMB:                 *fo.maxMB,
+		DirListingLimit:       *fo.dirListingLimit,
+		DataCenter:            *fo.dataCenter,
+		Rack:                  *fo.rack,
+		DefaultLevelDbDir:     defaultLevelDbDirectory,
+		DisableHttp:           *fo.disableHttp,
+		Host:                  filerAddress,
+		Cipher:                *fo.cipher,
+		SaveToFilerLimit:      int64(*fo.saveToFilerLimit),
+		ConcurrentUploadLimit: int64(*fo.concurrentUploadLimitMB) * 1024 * 1024,
+		ShowUIDirectoryDelete: *fo.showUIDirectoryDelete,
+		DownloadMaxBytesPs:    int64(*fo.downloadMaxMBps) * 1024 * 1024,
+		DiskType:              *fo.diskType,
+		AllowedOrigins:        strings.Split(*fo.allowedOrigins, ","),
+		ReadonlyPathRules:     pathRules,
+		DefaultAllowFiles:     defaultAllowFiles,
+		DefaultAllowListing:   defaultAllowListing,
 	})
 	if nfs_err != nil {
 		glog.Fatalf("Filer startup error: %v", nfs_err)

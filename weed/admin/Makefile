@@ -9,6 +9,9 @@ TEMPL_GO_FILES := $(TEMPL_FILES:.templ=_templ.go)
 GO_FILES := $(shell find $(ADMIN_DIR) -name "*.go" -not -name "*_templ.go")
 BUILD_DIR := ../..
 WEED_BINARY := $(BUILD_DIR)/weed
+GOBIN := $(shell go env GOPATH)/bin
+TEMPL := $(GOBIN)/templ
+export PATH := $(GOBIN):$(PATH)
 
 # Default target
 .PHONY: all
@@ -17,13 +20,13 @@ all: build
 # Install templ if not present
 .PHONY: install-templ
 install-templ:
-	@which templ > /dev/null || (echo "Installing templ..." && go install github.com/a-h/templ/cmd/templ@latest)
+	@test -f $(TEMPL) || (echo "Installing templ..." && go install github.com/a-h/templ/cmd/templ@latest)
 
 # Generate templ files
 .PHONY: generate
 generate: install-templ
 	@echo "Generating templ files..."
-	@templ generate
+	@$(TEMPL) generate
 	@echo "Generated: $(TEMPL_GO_FILES)"
 
 # Clean generated files
@@ -37,7 +40,7 @@ clean-templ:
 .PHONY: watch
 watch: install-templ
 	@echo "Watching for templ file changes..."
-	@templ generate --watch
+	@$(TEMPL) generate --watch
 
 # Build the main weed binary with admin component
 .PHONY: build
@@ -78,7 +81,7 @@ fmt:
 	@echo "Formatting Go code..."
 	@go fmt ./...
 	@echo "Formatting templ files..."
-	@templ fmt $(VIEW_DIR)
+	@$(TEMPL) fmt $(VIEW_DIR)
 
 # Validate static files exist
 .PHONY: validate-static
@@ -160,6 +163,6 @@ $(WEED_BINARY): $(TEMPL_GO_FILES) $(GO_FILES)
 # Auto-generate templ files when .templ files change
 %_templ.go: %.templ
 	@echo "Regenerating $@ from $<"
-	@templ generate
+	@$(TEMPL) generate
 
 .PHONY: $(TEMPL_GO_FILES) 

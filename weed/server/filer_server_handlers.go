@@ -172,24 +172,35 @@ func (fs *FilerServer) readonlyFilerHandler(w http.ResponseWriter, r *http.Reque
 
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
-		// Check if directory listing is disabled on readonly port
-		if fs.option.DisableDirListingReadonly {
-			path := r.URL.Path
-			// Check if this is a directory request (ends with / or is root)
-			if strings.HasSuffix(path, "/") {
+		path := r.URL.Path
+
+		// Find matching rule for this path
+		rule := fs.findReadonlyRule(path)
+
+		// Check if files are allowed for this path
+		if !rule.AllowFiles {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		// Check if this is a directory request
+		isDir := strings.HasSuffix(path, "/")
+		if !isDir && path != "/" {
+			ctx := r.Context()
+			entry, err := fs.filer.FindEntry(ctx, util.FullPath(path))
+			if err == nil && entry != nil && entry.IsDirectory() {
+				isDir = true
+			}
+		}
+
+		// If directory, check listing permission
+		if isDir {
+			if !rule.AllowListing {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			// Also check if the entry exists and is a directory
-			ctx := r.Context()
-			if path != "/" {
-				entry, err := fs.filer.FindEntry(ctx, util.FullPath(path))
-				if err == nil && entry != nil && entry.IsDirectory() {
-					w.WriteHeader(http.StatusNotFound)
-					return
-				}
-			}
 		}
+
 		fs.GetOrHeadHandler(w, r)
 	default:
 		requestMethod = "INVALID"

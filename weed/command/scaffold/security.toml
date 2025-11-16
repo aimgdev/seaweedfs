@@ -151,3 +151,69 @@ ca = ""
 # white list. It's checking request ip address.
 [guard]
 white_list = ""
+
+############################################
+# Readonly Port Path-Based Access Control
+############################################
+# Fine-grained control over which paths are accessible on the readonly port
+# and whether directory listings are allowed per path.
+#
+# The readonly port (configured with -port.readonly) is typically exposed
+# to the public for file downloads, while the main port remains internal
+# for full read/write access.
+
+[filer.readonly]
+
+# Default Permissions
+# -------------------
+# Applied to paths that don't have explicit rules configured below.
+# If these settings are omitted:
+#   default_allow_files = true (allow file downloads)
+#   default_allow_listing = false (block directory listings)
+
+# Allow file downloads for paths without explicit rules
+default_allow_files = true
+
+# Allow directory listings for paths without explicit rules
+default_allow_listing = false
+
+# Path-Specific Rules
+# -------------------
+# Define explicit permissions for specific path prefixes.
+# Rules use prefix matching - the longest matching prefix wins.
+#
+# Example nested rules:
+#   /media                → allow_files=true, allow_listing=true
+#   /media/private        → allow_files=false, allow_listing=false
+#
+# Request /media/public/video.mp4    → matches /media (allowed)
+# Request /media/private/secret.mp4  → matches /media/private (blocked)
+
+# Example: Public folder with directory browsing
+[filer.readonly.paths."/public"]
+allow_files = true      # Can download files from /public/*
+allow_listing = true    # Can browse /public/ directories
+
+# Example: Downloads folder without directory browsing
+[filer.readonly.paths."/downloads"]
+allow_files = true      # Can download files if URL is known
+allow_listing = false   # Cannot browse /downloads/ to discover files
+
+# Example: Completely blocked folder
+[filer.readonly.paths."/private"]
+allow_files = false     # Cannot access any files
+allow_listing = false   # Cannot browse directories
+
+# Example: Admin paths blocked
+[filer.readonly.paths."/admin"]
+allow_files = false
+allow_listing = false
+
+# Notes:
+# ------
+# - Empty section = use defaults only
+# - Paths are checked from longest to shortest prefix
+# - Both allow_files and allow_listing must be explicitly set per path
+# - If allow_files=false, the path returns 404 for any request
+# - If allow_files=true but allow_listing=false, files work but directories return 404
+# - All settings only affect the readonly port; main port has full access

@@ -114,10 +114,6 @@ func (fs *FilerServer) GetOrHeadHandler(w http.ResponseWriter, r *http.Request) 
 	query := r.URL.Query()
 
 	if entry.IsDirectory() {
-		if fs.option.DisableDirListing {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
 		if query.Get("metadata") == "true" {
 			writeJsonQuiet(w, r, http.StatusOK, entry)
 			return

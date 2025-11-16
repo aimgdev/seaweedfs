@@ -630,6 +630,8 @@ github.com/TomiHiltunen/geohash-golang v0.0.0-20150112065804-b3e4e625abfb h1:wum
 github.com/TomiHiltunen/geohash-golang v0.0.0-20150112065804-b3e4e625abfb/go.mod h1:QiYsIBRQEO+Z4Rz7GoI+dsHVneZNONvhczuA+llOZNM=
 github.com/a-h/templ v0.3.943 h1:o+mT/4yqhZ33F3ootBiHwaY4HM5EVaOJfIshvd5UNTY=
 github.com/a-h/templ v0.3.943/go.mod h1:oCZcnKRf5jjsGpf2yELzQfodLphd2mwecwG4Crk5HBo=
+github.com/a-h/templ v0.3.960 h1:trshEpGa8clF5cdI39iY4ZrZG8Z/QixyzEyUnA7feTM=
+github.com/a-h/templ v0.3.960/go.mod h1:oCZcnKRf5jjsGpf2yELzQfodLphd2mwecwG4Crk5HBo=
 github.com/aalpar/deheap v0.0.0-20210914013432-0cc84d79dec3 h1:hhdWprfSpFbN7lz3W1gM40vOgvSh1WCSMxYD6gGB4Hs=
 github.com/aalpar/deheap v0.0.0-20210914013432-0cc84d79dec3/go.mod h1:XaUnRxSCYgL3kkgX0QHIV0D+znljPIDImxlv2kbGv0Y=
 github.com/abbot/go-http-auth v0.4.0 h1:QjmvZ5gSC7jm3Zg54DqWE/T5m1t2AfDu6QlXJT0EVT0=

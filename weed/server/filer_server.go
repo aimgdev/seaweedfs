@@ -54,30 +54,37 @@ import (
 	"github.com/seaweedfs/seaweedfs/weed/security"
 )
 
+type ReadonlyPathRule struct {
+	PathPrefix   string
+	AllowFiles   bool
+	AllowListing bool
+}
+
 type FilerOption struct {
-	Masters               *pb.ServerDiscovery
-	FilerGroup            string
-	Collection                string
-	DefaultReplication        string
-	DisableDirListing         bool
-	DisableDirListingReadonly bool
-	MaxMB                     int
-	DirListingLimit       int
-	DataCenter            string
-	Rack                  string
-	DataNode              string
-	DefaultLevelDbDir     string
-	DisableHttp           bool
-	Host                  pb.ServerAddress
-	recursiveDelete       bool
-	Cipher                bool
-	SaveToFilerLimit      int64
-	ConcurrentUploadLimit int64
-	ShowUIDirectoryDelete bool
-	DownloadMaxBytesPs    int64
-	DiskType              string
-	AllowedOrigins        []string
-	ExposeDirectoryData   bool
+	Masters                 *pb.ServerDiscovery
+	FilerGroup              string
+	Collection              string
+	DefaultReplication      string
+	MaxMB                   int
+	DirListingLimit         int
+	DataCenter              string
+	Rack                    string
+	DataNode                string
+	DefaultLevelDbDir       string
+	DisableHttp             bool
+	Host                    pb.ServerAddress
+	recursiveDelete         bool
+	Cipher                  bool
+	SaveToFilerLimit        int64
+	ConcurrentUploadLimit   int64
+	ShowUIDirectoryDelete   bool
+	DownloadMaxBytesPs      int64
+	DiskType                string
+	AllowedOrigins          []string
+	ExposeDirectoryData     bool
+	ReadonlyPathRules       []*ReadonlyPathRule
+	DefaultAllowFiles       bool
+	DefaultAllowListing     bool
 }
 
 type FilerServer struct {
@@ -223,6 +230,24 @@ func NewFilerServer(defaultMux, readonlyMux *http.ServeMux, option *FilerOption)
 	fs.filer.Dlm.LockRing.SetTakeSnapshotCallback(fs.OnDlmChangeSnapshot)
 
 	return fs, nil
+}
+
+func (fs *FilerServer) findReadonlyRule(path string) *ReadonlyPathRule {
+	// Check path rules (pre-sorted by prefix length, longest first)
+	// Use case-insensitive matching since TOML normalizes section names to lowercase
+	lowerPath := strings.ToLower(path)
+	for _, rule := range fs.option.ReadonlyPathRules {
+		if strings.HasPrefix(lowerPath, strings.ToLower(rule.PathPrefix)) {
+			return rule
+		}
+	}
+
+	// Return default rule
+	return &ReadonlyPathRule{
+		PathPrefix:   "",
+		AllowFiles:   fs.option.DefaultAllowFiles,
+		AllowListing: fs.option.DefaultAllowListing,
+	}
 }
 
 func (fs *FilerServer) checkWithMaster() {
